@@ -6,7 +6,7 @@ The design, including what is deliberately not solved yet, is in [plan.md](plan.
 
 ## What it does
 
-1. **Taunt.** A background loop looks for `RelicCardinal.exe`, grabs the minimap with a screen copy, and masks enemy colors in HSV. Connected components turn that mask into clusters. A cluster that sits inside a configurable disk around the town center, for several frames in a row, sends a taunt such as `/63` ("I'm under attack!") subject to a per-taunt cooldown.
+1. **Taunt.** A background loop looks for `RelicCardinal.exe`, grabs the minimap with a screen copy, and masks enemy colors in HSV. Connected components turn that mask into clusters. A cluster that sits inside a configurable disk around the town center, for several frames in a row, sends a taunt such as `/63` ("I'm under attack!") subject to a per-taunt cooldown. The numbered lines are in [docs/TAUNTS.md](docs/TAUNTS.md).
 2. **Coach.** Build orders come from the aoe4guides API. Steps are announced on a clock, or one at a time when you press Enter (or F13). Windows can speak them with SAPI. They can also be typed into chat.
 
 `input.dry_run` ships as `true`. Until you set it to `false`, nothing is typed into the game. Typing can conflict with anti-cheat and with the game's terms. Read that section of [plan.md](plan.md) before changing it. Text-to-speech does not inject keys.

@@ -61,11 +61,13 @@ detection:
 
 taunts:
   - id: under_attack
+    # /63 is "I'm under attack!" in docs/TAUNTS.md.
     command: "/63"
     label: "I'm under attack!"
     cooldown_secs: 45
     min_clusters: 1
   # A second rule fires only when the first is on cooldown and two clusters match.
+  # /12 is "Ah! Being rushed." in docs/TAUNTS.md.
   # - id: being_rushed
   #   command: "/12"
   #   label: "Ah! Being rushed."

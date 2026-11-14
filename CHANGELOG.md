@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-11-14
+
+### Added
+
+- `docs/TAUNTS.md`: Age of Empires IV chat taunts with the chat command, the published line, and notes. 125 lines have a printed text. Codes 123–127 and nine of the twelve Raiders of the North taunts are listed as unpublished rather than guessed. The example `/63` and the commented `/12` match that list.
+
 ## [0.1.1] - 2026-11-14
 
 ### Added
