@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `docs/TAUNTS.md`: Age of Empires IV chat taunts with the chat command, the published line, and notes. 125 lines have a printed text. Codes 123–127 and nine of the twelve Raiders of the North taunts are listed as unpublished rather than guessed. The example `/63` and the commented `/12` match that list.
+- Draft per-taunt schema in `docs/TAUNT_SCHEMA.md`, with `taunts.example.yaml` and `schemas/taunts.schema.json`. The agent does not load the file yet. `/63` and `/12` are mapped from the current config. Other condition types are marked proposed.
 
 ## [0.2.0] - 2026-11-14
 
