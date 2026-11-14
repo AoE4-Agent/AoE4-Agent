@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const DEFAULT_API_BASE: &str = "https://aoe4-guides-api-7h2vti5ckq-ey.a.run.app";
-pub const USER_AGENT: &str = "aoe4-agent/0.1.0 (+https://github.com/AoE4-Agent/AoE4-Agent)";
+pub const USER_AGENT: &str = "aoe4-agent/0.1.1 (+https://github.com/AoE4-Agent/AoE4-Agent)";
 
 #[derive(Debug, Clone)]
 pub struct ListQuery {
