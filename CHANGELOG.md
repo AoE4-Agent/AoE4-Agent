@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-14
+
+### Changed
+
+- `config.yaml` and `coach.cache_dir` resolve against the directory that contains `aoe4-agent.exe`, not the process working directory. A Steam launch can use `.\AoE4Agent` inside the Age of Empires IV install folder. `--config` and `--cache` (or `AOE4_AGENT_CONFIG` and `AOE4_AGENT_CACHE`) override those paths; a relative override is still exe-relative unless it is a rooted path.
+- The README launch option is `cmd /c start "AoE4 Agent" /D ".\AoE4Agent" ".\AoE4Agent\aoe4-agent.exe" taunt & %command%`. The batch file keeps `%~dp0` because `.\AoE4Agent` is the wrong relative path once the script is already inside that folder.
+
+### Added
+
+- Config keys, with the previous literals as defaults: `process.status_log_secs`, `input.chat_key`, `input.team_modifier`, `coach.connect_timeout_secs`, `coach.read_timeout_secs`, `coach.list_cap`, `coach.skip_grace_secs`, `coach.tick_ms`, `coach.speech_chars`, `coach.chat_chars`. Omitting a key keeps the old behavior. `process.name` defaults to `RelicCardinal.exe` when the process section is omitted.
+
 ## [0.1.1] - 2026-11-14
 
 ### Added

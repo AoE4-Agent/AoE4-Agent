@@ -2,9 +2,9 @@
 //! this file only wires them to a [`Platform`] and the console.
 
 use crate::coach::{announcement, clip_chars, sanitize_chat, BuildOrder, Scheduler};
-use crate::config::{parse_hotkey, AnnounceChannel, ChatTarget, CoachMode, Config};
+use crate::config::{parse_hotkey, AnnounceChannel, CoachMode, Config};
 use crate::frame::{fraction_to_pixels, Image};
-use crate::guides::{self, GuidesClient};
+use crate::guides;
 use crate::platform::{HostPlatform, Platform};
 use crate::ppm::{read_ppm, write_ppm};
 use crate::taunt::TauntBrain;
@@ -107,7 +107,7 @@ pub fn run_taunt(
         if !platform.process_running(&cfg.process.name)? {
             if Instant::now() >= next_wait_log {
                 println!("waiting for {}", cfg.process.name);
-                next_wait_log = Instant::now() + Duration::from_secs(5);
+                next_wait_log = Instant::now() + Duration::from_secs(cfg.process.status_log_secs);
             }
             wait(stop, cfg.poll());
             continue;
@@ -127,9 +127,11 @@ pub fn run_taunt(
                 );
             } else {
                 let _guard = chat.lock().unwrap_or_else(|err| err.into_inner());
+                let (chat_key, modifier) = cfg.chat_chord()?;
                 platform.send_chat(
                     &rule.command,
-                    cfg.input.chat == ChatTarget::Team,
+                    modifier,
+                    chat_key,
                     cfg.key_delay(),
                     cfg.chat_open_delay(),
                 )?;
@@ -155,7 +157,7 @@ pub fn run_coach(
     stop: &AtomicBool,
 ) -> Result<()> {
     let id = guides::normalize_build_id(build_id)?;
-    let client = GuidesClient::new(&cfg.coach.api_base);
+    let client = cfg.guides_client();
     let build = guides::fetch_build(&client, Path::new(&cfg.coach.cache_dir), &id)?;
     let channel = channel.unwrap_or(cfg.coach.channel);
     run_coach_with_build(cfg, &build, channel, start_at, stop, &Mutex::new(()))
@@ -176,7 +178,7 @@ pub fn run_both(
         ));
     }
     let id = guides::normalize_build_id(build_id)?;
-    let client = GuidesClient::new(&cfg.coach.api_base);
+    let client = cfg.guides_client();
     let build = guides::fetch_build(&client, Path::new(&cfg.coach.cache_dir), &id)?;
     let chat = Arc::new(Mutex::new(()));
     let coach_cfg = cfg.clone();
@@ -206,7 +208,7 @@ pub fn run_check(cfg: &Config) -> Result<()> {
         "config: ok (dry_run={}, process={}, channel={:?}, mode={:?})",
         cfg.input.dry_run, cfg.process.name, cfg.coach.channel, cfg.coach.mode
     );
-    let client = GuidesClient::new(&cfg.coach.api_base);
+    let client = cfg.guides_client();
     let status = client.status()?;
     println!("api: {status} ({})", cfg.coach.api_base);
     let platform = HostPlatform;
@@ -267,7 +269,11 @@ fn run_coach_with_build(
         Duration::from_secs(cfg.coach.lead_secs),
     );
     let use_lead = cfg.coach.mode == CoachMode::Timer;
-    sched.skip_past(start_at, use_lead);
+    sched.skip_past(
+        start_at,
+        use_lead,
+        Duration::from_secs(cfg.coach.skip_grace_secs),
+    );
     let skipped = build.steps.len() - sched.remaining();
     if skipped > 0 {
         println!("skipped {skipped} steps already behind {start_at:?}");
@@ -325,7 +331,7 @@ fn run_coach_with_build(
             println!("coach finished");
             break;
         }
-        wait(stop, Duration::from_millis(100));
+        wait(stop, Duration::from_millis(cfg.coach.tick_ms));
     }
     Ok(())
 }
@@ -337,7 +343,7 @@ fn announce(
     channel: AnnounceChannel,
     speech: &str,
 ) -> Result<()> {
-    let speech = clip_chars(speech, 400);
+    let speech = clip_chars(speech, cfg.coach.speech_chars);
     println!("{speech}");
     if matches!(channel, AnnounceChannel::Tts | AnnounceChannel::Both) && platform.supports_tts() {
         if let Err(err) = platform.speak(&speech) {
@@ -345,14 +351,16 @@ fn announce(
         }
     }
     if matches!(channel, AnnounceChannel::Chat | AnnounceChannel::Both) {
-        let line = sanitize_chat(&speech, 120);
+        let line = sanitize_chat(&speech, cfg.coach.chat_chars);
         if cfg.input.dry_run {
             println!("dry-run chat: {line}");
         } else if platform.supports_input() {
             let _guard = chat.lock().unwrap_or_else(|err| err.into_inner());
+            let (chat_key, modifier) = cfg.chat_chord()?;
             platform.send_chat(
                 &line,
-                cfg.input.chat == ChatTarget::Team,
+                modifier,
+                chat_key,
                 cfg.key_delay(),
                 cfg.chat_open_delay(),
             )?;
@@ -392,7 +400,7 @@ fn wait(stop: &AtomicBool, total: Duration) {
 
 pub fn print_build_list(builds: &[crate::coach::BuildSummary]) {
     if builds.is_empty() {
-        println!("no builds returned (the API serves at most 10 per call)");
+        println!("no builds returned");
         return;
     }
     println!(

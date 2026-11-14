@@ -102,7 +102,7 @@ That host returns:
 
 The client prefers the overlay document and falls back to native. Both become `BuildStep { at, age, villagers, resources, notes }`. HTML `<img title="…">` and `<br>` and the `@token@` dialect are reduced to speech by `clean_note`. Empty `ageUp` groups are skipped. A negative or blank count means "not set" and is left out of the sentence.
 
-Fair use, from the site's own about page: the API is free, unauthenticated, and asks callers to cache, stay inside the rate limit, and not walk the whole library. The agent sends `User-Agent: aoe4-agent/0.1.1`, caches the raw JSON at `cache/<id>.json`, and reads that file if the next request fails. List calls are not crawled.
+Fair use, from the site's own about page: the API is free, unauthenticated, and asks callers to cache, stay inside the rate limit, and not walk the whole library. The agent sends a `User-Agent` of `aoe4-agent/` plus the package version, caches the raw JSON at `cache/<id>.json` beside the executable, and reads that file if the next request fails. List calls are not crawled.
 
 Timing:
 
@@ -114,6 +114,8 @@ Every step is printed. TTS (Windows SAPI through a short PowerShell script, no c
 ## Config
 
 `config.example.yaml` is the schema. `config.yaml` is a committed copy so the VS Code launch profiles work without a copy step. Unknown keys are errors. Validation covers fraction ranges, hue wrap, cooldown bounds, duplicate taunt ids, and the hotkey name (`F1`–`F24` or `none`).
+
+Semver 0.2.0 keeps the game-specific numbers in that file and gives the ones that used to be literals a config key with the same default: process name and the wait-log interval, the chat chord (`chat_key`, `team_modifier`), API timeouts, the list cap, skip grace, coach tick, and the speech and chat length limits. Relative `config.yaml` and `coach.cache_dir` are resolved against the directory that contains the executable. Steam's working directory is the Age of Empires IV install folder, so a launch option can point at `.\AoE4Agent` inside that folder and the exe still finds the files next to itself. `--dump` and `--image` stay relative to the current directory because they name a file for one invocation. `AOE4_AGENT_CONFIG` and `AOE4_AGENT_CACHE` override the flag and the cache directory.
 
 The color defaults assume unique colors and a blue player. That is a starting point, not a measurement. See calibration below.
 

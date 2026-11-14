@@ -8,6 +8,8 @@ process:
   name: RelicCardinal.exe
   # Do not type while the game is in the background or a menu has focus.
   require_foreground: true
+  # How often to repeat "waiting for <process>" while the game is closed.
+  status_log_secs: 5
 
 capture:
   poll_ms: 200
@@ -76,22 +78,34 @@ input:
   # true logs the taunt instead of typing it. Set false only after reading
   # the anti-cheat section of plan.md. TTS is unaffected.
   dry_run: true
-  # all: Enter, type, Enter. team: hold Shift around Enter. The Shift binding
-  # is a guess; see plan.md.
+  # all: tap chat_key. team: hold team_modifier around chat_key.
+  # Shift+Enter is a guess for team chat; see plan.md.
   chat: all
+  chat_key: enter
+  team_modifier: shift
   key_delay_ms: 40
   chat_open_delay_ms: 80
 
 coach:
   # aoe4guides.com only proxies single-build GETs. List and status live here.
   api_base: "https://aoe4-guides-api-7h2vti5ckq-ey.a.run.app"
+  # Relative to the folder that contains aoe4-agent.exe, unless rooted.
   cache_dir: cache
-  # tts, chat, or both. tts does not inject keys. chat is clipped to one line.
+  connect_timeout_secs: 10
+  read_timeout_secs: 25
+  # The public list endpoint returns at most this many rows.
+  list_cap: 10
+  # tts, chat, or both. tts does not inject keys. chat is clipped to chat_chars.
   channel: tts
   # timer follows step timestamps from the moment you start the command.
   # hotkey waits for Enter in this console (or step_hotkey) so you stay in sync.
   mode: timer
   lead_secs: 2
+  # Steps already further behind --start-at than this are not read out.
+  skip_grace_secs: 1
+  tick_ms: 100
+  speech_chars: 400
+  chat_chars: 120
   step_hotkey: F13
 
 log:

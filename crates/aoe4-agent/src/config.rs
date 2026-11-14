@@ -12,13 +12,17 @@ use std::time::Duration;
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    #[serde(default)]
     pub process: ProcessConfig,
     pub capture: CaptureConfig,
     pub colors: ColorConfig,
+    #[serde(default)]
     pub detection: DetectionConfig,
     #[serde(default)]
     pub taunts: Vec<TauntConfig>,
+    #[serde(default)]
     pub input: InputConfig,
+    #[serde(default)]
     pub coach: CoachConfig,
     #[serde(default)]
     pub log: LogConfig,
@@ -27,9 +31,24 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProcessConfig {
+    /// Game executable, matched case-insensitively.
+    #[serde(default = "default_process_name")]
     pub name: String,
     #[serde(default = "default_true")]
     pub require_foreground: bool,
+    /// Repeat the "waiting for the game" line at this interval.
+    #[serde(default = "default_status_log_secs")]
+    pub status_log_secs: u64,
+}
+
+impl Default for ProcessConfig {
+    fn default() -> Self {
+        Self {
+            name: default_process_name(),
+            require_foreground: default_true(),
+            status_log_secs: default_status_log_secs(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -89,6 +108,17 @@ pub struct DetectionConfig {
     pub consecutive_frames: u32,
 }
 
+impl Default for DetectionConfig {
+    fn default() -> Self {
+        Self {
+            connectivity: default_connectivity(),
+            min_cluster_pixels: default_min_cluster(),
+            near_town_center_only: default_true(),
+            consecutive_frames: default_consecutive(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TauntConfig {
@@ -117,10 +147,29 @@ pub struct InputConfig {
     pub dry_run: bool,
     #[serde(default)]
     pub chat: ChatTarget,
+    /// Key that opens chat and sends the line. `enter` is the AoE4 default.
+    #[serde(default = "default_chat_key")]
+    pub chat_key: String,
+    /// Held while tapping `chat_key` when `chat` is `team`.
+    #[serde(default = "default_team_modifier")]
+    pub team_modifier: String,
     #[serde(default = "default_key_delay")]
     pub key_delay_ms: u64,
     #[serde(default = "default_open_delay")]
     pub chat_open_delay_ms: u64,
+}
+
+impl Default for InputConfig {
+    fn default() -> Self {
+        Self {
+            dry_run: default_true(),
+            chat: ChatTarget::All,
+            chat_key: default_chat_key(),
+            team_modifier: default_team_modifier(),
+            key_delay_ms: default_key_delay(),
+            chat_open_delay_ms: default_open_delay(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
@@ -145,17 +194,55 @@ pub enum CoachMode {
 pub struct CoachConfig {
     #[serde(default = "default_api_base")]
     pub api_base: String,
+    /// Relative to the executable's directory unless this is a rooted path.
     #[serde(default = "default_cache_dir")]
     pub cache_dir: String,
+    #[serde(default = "default_connect_timeout")]
+    pub connect_timeout_secs: u64,
+    #[serde(default = "default_read_timeout")]
+    pub read_timeout_secs: u64,
+    /// Client-side cap on `coach list`. The guides API itself returns at most 10.
+    #[serde(default = "default_list_cap")]
+    pub list_cap: usize,
     #[serde(default)]
     pub channel: AnnounceChannel,
     #[serde(default)]
     pub mode: CoachMode,
     #[serde(default = "default_lead")]
     pub lead_secs: u64,
+    /// Steps already this far behind `--start-at` are skipped.
+    #[serde(default = "default_skip_grace")]
+    pub skip_grace_secs: u64,
+    /// How often the coach checks the clock or the hotkey.
+    #[serde(default = "default_tick_ms")]
+    pub tick_ms: u64,
+    #[serde(default = "default_speech_chars")]
+    pub speech_chars: usize,
+    #[serde(default = "default_chat_chars")]
+    pub chat_chars: usize,
     /// Windows virtual key such as `F13`, or `none` to use stdin only.
     #[serde(default = "default_hotkey")]
     pub step_hotkey: String,
+}
+
+impl Default for CoachConfig {
+    fn default() -> Self {
+        Self {
+            api_base: default_api_base(),
+            cache_dir: default_cache_dir(),
+            connect_timeout_secs: default_connect_timeout(),
+            read_timeout_secs: default_read_timeout(),
+            list_cap: default_list_cap(),
+            channel: AnnounceChannel::Tts,
+            mode: CoachMode::Timer,
+            lead_secs: default_lead(),
+            skip_grace_secs: default_skip_grace(),
+            tick_ms: default_tick_ms(),
+            speech_chars: default_speech_chars(),
+            chat_chars: default_chat_chars(),
+            step_hotkey: default_hotkey(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -173,6 +260,12 @@ impl Default for LogConfig {
     }
 }
 
+fn default_process_name() -> String {
+    "RelicCardinal.exe".into()
+}
+fn default_status_log_secs() -> u64 {
+    5
+}
 fn default_true() -> bool {
     true
 }
@@ -191,6 +284,12 @@ fn default_consecutive() -> u32 {
 fn default_min_clusters() -> usize {
     1
 }
+fn default_chat_key() -> String {
+    "enter".into()
+}
+fn default_team_modifier() -> String {
+    "shift".into()
+}
 fn default_key_delay() -> u64 {
     40
 }
@@ -203,8 +302,29 @@ fn default_api_base() -> String {
 fn default_cache_dir() -> String {
     "cache".into()
 }
+fn default_connect_timeout() -> u64 {
+    10
+}
+fn default_read_timeout() -> u64 {
+    25
+}
+fn default_list_cap() -> usize {
+    10
+}
 fn default_lead() -> u64 {
     2
+}
+fn default_skip_grace() -> u64 {
+    1
+}
+fn default_tick_ms() -> u64 {
+    100
+}
+fn default_speech_chars() -> usize {
+    400
+}
+fn default_chat_chars() -> usize {
+    120
 }
 fn default_hotkey() -> String {
     "F13".into()
@@ -238,6 +358,11 @@ impl Config {
     pub fn validate(&self) -> Result<()> {
         if self.process.name.trim().is_empty() {
             return Err(Error::Config("process.name must not be empty".into()));
+        }
+        if !(1..=3_600).contains(&self.process.status_log_secs) {
+            return Err(Error::Config(
+                "process.status_log_secs must be from 1 to 3600".into(),
+            ));
         }
         if !(16..=5_000).contains(&self.capture.poll_ms) {
             return Err(Error::Config(
@@ -333,12 +458,38 @@ impl Config {
                 "key_delay_ms must be <= 500 and chat_open_delay_ms <= 1000".into(),
             ));
         }
+        named_key(&self.input.chat_key)?;
+        named_key(&self.input.team_modifier)?;
         if self.coach.api_base.trim().is_empty() {
             return Err(Error::Config("coach.api_base must not be empty".into()));
         }
-        if self.coach.lead_secs > 120 {
+        if self.coach.connect_timeout_secs == 0
+            || self.coach.connect_timeout_secs > 120
+            || self.coach.read_timeout_secs == 0
+            || self.coach.read_timeout_secs > 180
+        {
             return Err(Error::Config(
-                "coach.lead_secs must be from 0 to 120".into(),
+                "coach connect_timeout_secs must be 1..=120 and read_timeout_secs 1..=180".into(),
+            ));
+        }
+        if !(1..=50).contains(&self.coach.list_cap) {
+            return Err(Error::Config("coach.list_cap must be from 1 to 50".into()));
+        }
+        if self.coach.lead_secs > 120 || self.coach.skip_grace_secs > 120 {
+            return Err(Error::Config(
+                "coach.lead_secs and skip_grace_secs must be from 0 to 120".into(),
+            ));
+        }
+        if !(20..=5_000).contains(&self.coach.tick_ms) {
+            return Err(Error::Config(
+                "coach.tick_ms must be from 20 to 5000".into(),
+            ));
+        }
+        if !(20..=2_000).contains(&self.coach.speech_chars)
+            || !(8..=240).contains(&self.coach.chat_chars)
+        {
+            return Err(Error::Config(
+                "coach.speech_chars must be 20..=2000 and chat_chars 8..=240".into(),
             ));
         }
         parse_hotkey(&self.coach.step_hotkey).map(|_| ())?;
@@ -394,6 +545,42 @@ impl Config {
     pub fn poll(&self) -> Duration {
         Duration::from_millis(self.capture.poll_ms)
     }
+
+    /// `(chat key, optional modifier)`. The modifier is set only for team chat.
+    pub fn chat_chord(&self) -> Result<(u16, Option<u16>)> {
+        let key = named_key(&self.input.chat_key)?;
+        let modifier = if self.input.chat == ChatTarget::Team {
+            Some(named_key(&self.input.team_modifier)?)
+        } else {
+            None
+        };
+        Ok((key, modifier))
+    }
+
+    pub fn guides_client(&self) -> crate::guides::GuidesClient {
+        crate::guides::GuidesClient::with_timeouts(
+            &self.coach.api_base,
+            Duration::from_secs(self.coach.connect_timeout_secs),
+            Duration::from_secs(self.coach.read_timeout_secs),
+        )
+    }
+}
+
+/// Virtual-key code for a chat key or modifier. `none` is not allowed.
+pub fn named_key(name: &str) -> Result<u16> {
+    match name.trim().to_ascii_lowercase().as_str() {
+        "enter" | "return" => Ok(0x0D),
+        "shift" => Ok(0x10),
+        "ctrl" | "control" => Ok(0x11),
+        "alt" => Ok(0x12),
+        "space" => Ok(0x20),
+        "tab" => Ok(0x09),
+        _ => parse_hotkey(name)?.ok_or_else(|| {
+            Error::Config(format!(
+                "key '{name}' is not enter, shift, ctrl, alt, space, tab, or F1-F24"
+            ))
+        }),
+    }
 }
 
 /// Virtual-key code for a small set of keys that are safe to poll globally.
@@ -439,6 +626,14 @@ mod tests {
         assert!(cfg.input.dry_run);
         assert_eq!(cfg.taunts[0].command, "/63");
         assert_eq!(cfg.taunts[0].label, "I'm under attack!");
+        assert_eq!(cfg.input.chat_key, "enter");
+        assert_eq!(cfg.input.team_modifier, "shift");
+        assert_eq!(cfg.chat_chord().unwrap(), (0x0D, None));
+        assert_eq!(cfg.coach.list_cap, 10);
+        assert_eq!(cfg.coach.speech_chars, 400);
+        assert_eq!(cfg.coach.chat_chars, 120);
+        assert_eq!(cfg.coach.skip_grace_secs, 1);
+        assert_eq!(cfg.process.status_log_secs, 5);
         assert_eq!(cfg.coach.api_base, crate::guides::DEFAULT_API_BASE);
         assert_eq!(cfg.coach.channel, AnnounceChannel::Tts);
         assert!(cfg.detector().town_center.is_some());
@@ -457,10 +652,45 @@ mod tests {
     }
 
     #[test]
+    fn omitted_tunables_use_the_compiled_defaults() {
+        let cfg = Config::parse(
+            r#"
+capture:
+  minimap: {x: 0.0, y: 0.0, width: 1.0, height: 1.0}
+  town_center: {cx: 0.5, cy: 0.5, radius: 0.5}
+colors:
+  enemies:
+    - {name: red, h_min: 345, h_max: 15, s_min: 0.4, s_max: 1, v_min: 0.3, v_max: 1}
+taunts:
+  - {id: under_attack, command: "/63", cooldown_secs: 45}
+"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.process.name, "RelicCardinal.exe");
+        assert!(cfg.input.dry_run);
+        assert_eq!(cfg.input.chat_key, "enter");
+        assert_eq!(cfg.input.team_modifier, "shift");
+        assert_eq!(cfg.coach.api_base, crate::guides::DEFAULT_API_BASE);
+        assert_eq!(cfg.coach.cache_dir, "cache");
+        assert_eq!(cfg.coach.connect_timeout_secs, 10);
+        assert_eq!(cfg.coach.read_timeout_secs, 25);
+        assert_eq!(cfg.coach.list_cap, 10);
+        assert_eq!(cfg.coach.skip_grace_secs, 1);
+        assert_eq!(cfg.coach.tick_ms, 100);
+        assert_eq!(cfg.coach.speech_chars, 400);
+        assert_eq!(cfg.coach.chat_chars, 120);
+        assert_eq!(cfg.coach.step_hotkey, "F13");
+        assert_eq!(cfg.detection.consecutive_frames, 3);
+    }
+
+    #[test]
     fn hotkeys_cover_the_function_row() {
         assert_eq!(parse_hotkey("F13").unwrap(), Some(0x7C));
         assert_eq!(parse_hotkey("f1").unwrap(), Some(0x70));
         assert_eq!(parse_hotkey("none").unwrap(), None);
         assert!(parse_hotkey("Enter").is_err());
+        assert_eq!(named_key("Enter").unwrap(), 0x0D);
+        assert_eq!(named_key("shift").unwrap(), 0x10);
+        assert!(named_key("none").is_err());
     }
 }

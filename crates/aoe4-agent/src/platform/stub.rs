@@ -35,7 +35,8 @@ impl Platform for StubPlatform {
     fn send_chat(
         &self,
         _text: &str,
-        _team: bool,
+        _modifier: Option<u16>,
+        _chat_key: u16,
         _key_delay: Duration,
         _open_delay: Duration,
     ) -> Result<()> {

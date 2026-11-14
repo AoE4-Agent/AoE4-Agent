@@ -30,7 +30,9 @@ pub trait Platform {
     fn send_chat(
         &self,
         text: &str,
-        team: bool,
+        // Held around `chat_key` when team chat is selected. `None` sends to all chat.
+        modifier: Option<u16>,
+        chat_key: u16,
         key_delay: Duration,
         open_delay: Duration,
     ) -> Result<()>;
