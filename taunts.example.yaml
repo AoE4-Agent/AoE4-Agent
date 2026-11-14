@@ -1,0 +1,104 @@
+# Draft taunt list. The agent does not load this file yet.
+# Codes and quoted lines are from docs/TAUNTS.md (pull request #6).
+# condition types other than minimap_enemy_near_tc are proposed.
+
+version: 1
+
+taunts:
+  # Shipped rule: one enemy cluster near the town center sends /63.
+  - id: under_attack
+    name: Under attack
+    number: 63
+    text: "I'm under attack!"
+    description: Current default. Fires before being_rushed when both match.
+    chat: inherit
+    condition:
+      type: minimap_enemy_near_tc
+      min_clusters: 1
+    cooldown_secs: 45
+    priority: 10
+    chance: 1
+
+  # Commented rule in config.yaml: two clusters, and only if /63 is cooling down.
+  - id: being_rushed
+    name: Being rushed
+    number: 12
+    text: "Ah! Being rushed."
+    description: Second cluster threshold. Same streak and list order as today.
+    chat: inherit
+    condition:
+      type: minimap_enemy_near_tc
+      min_clusters: 2
+    cooldown_secs: 60
+    priority: 20
+    chance: 1
+
+  # Proposed timing. The detector can see the blobs; the match clock cannot.
+  - id: hold_the_line
+    name: Hold the line
+    number: 64
+    text: "Hold the line!"
+    enabled: true
+    chat: team
+    condition:
+      type: minimap_enemy_near_tc
+      min_clusters: 1
+    cooldown_secs: 90
+    max_per_game: 4
+    priority: 30
+    min_game_time_secs: 120
+    consecutive_frames: 5
+
+  - id: retreat
+    name: Retreat
+    number: 100
+    text: "Retreat! Retreat!"
+    description: Many clusters, allies only, twice a match at most.
+    chat: team
+    condition:
+      type: minimap_enemy_near_tc
+      min_clusters: 3
+    cooldown_secs: 120
+    max_per_game: 2
+    priority: 5
+    chance: 1
+
+  - id: enemy_rush
+    name: Enemy rush
+    number: 55
+    text: "Enemy is preparing to rush."
+    chat: team
+    condition:
+      type: minimap_enemy_near_tc
+      min_clusters: 1
+    cooldown_secs: 180
+    max_per_game: 3
+    priority: 40
+    min_game_time_secs: 30
+
+  # Proposed. The coach hotkey exists; taunts do not listen to it.
+  - id: good_game
+    name: Good game
+    number: 40
+    text: "Good game, well played."
+    chat: all
+    condition:
+      type: hotkey
+      key: F8
+    cooldown_secs: 30
+    max_per_game: 1
+    priority: 1
+
+  # Proposed. "Quiet" would mean no enemy blobs in the town-center disk.
+  - id: not_ready
+    name: Not ready
+    number: 60
+    text: "Wait, I'm not ready yet."
+    chat: team
+    condition:
+      type: idle
+      quiet_secs: 90
+    cooldown_secs: 120
+    max_per_game: 2
+    priority: 50
+    also_speak: false

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AoE4-Agent/AoE4-Agent/schemas/taunts.schema.json",
+  "title": "AoE4 Agent taunt list (draft)",
+  "description": "Draft per-taunt file. The Rust agent does not load this yet. See docs/TAUNT_SCHEMA.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "taunts"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "taunts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/taunt" }
+    }
+  },
+  "$defs": {
+    "taunt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "number", "condition", "cooldown_secs"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "number": { "type": "integer", "minimum": 1 },
+        "command": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "text": { "type": "string" },
+        "description": { "type": "string" },
+        "enabled": { "type": "boolean", "default": true },
+        "chat": {
+          "type": "string",
+          "enum": ["all", "team", "inherit"],
+          "default": "inherit"
+        },
+        "condition": { "$ref": "#/$defs/condition" },
+        "cooldown_secs": { "type": "number", "minimum": 1, "maximum": 3600 },
+        "max_per_game": { "type": "integer", "minimum": 1 },
+        "priority": { "type": "integer", "default": 100 },
+        "chance": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "min_game_time_secs": { "type": "number", "minimum": 0, "default": 0 },
+        "consecutive_frames": { "type": "integer", "minimum": 1, "maximum": 60 },
+        "also_speak": { "type": "boolean", "default": false }
+      }
+    },
+    "condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/minimap" },
+        { "$ref": "#/$defs/hotkey" },
+        { "$ref": "#/$defs/game_start" },
+        { "$ref": "#/$defs/idle" },
+        { "$ref": "#/$defs/coach_event" }
+      ]
+    },
+    "minimap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "minimap_enemy_near_tc" },
+        "min_clusters": { "type": "integer", "minimum": 1, "default": 1 }
+      }
+    },
+    "hotkey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "key"],
+      "properties": {
+        "type": { "const": "hotkey" },
+        "key": {
+          "type": "string",
+          "pattern": "^(stdin|F([1-9]|1[0-9]|2[0-4]))$"
+        }
+      }
+    },
+    "game_start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "game_start" },
+        "delay_secs": { "type": "number", "minimum": 0, "default": 0 }
+      }
+    },
+    "idle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "quiet_secs"],
+      "properties": {
+        "type": { "const": "idle" },
+        "quiet_secs": { "type": "number", "minimum": 1 }
+      }
+    },
+    "coach_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "event"],
+      "properties": {
+        "type": { "const": "coach_event" },
+        "event": { "type": "string", "enum": ["age_up", "step", "finished"] }
+      }
+    }
+  }
+}
