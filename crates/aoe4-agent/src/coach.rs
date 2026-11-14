@@ -304,10 +304,9 @@ impl Scheduler {
         self.announced.iter().filter(|done| !**done).count()
     }
 
-    /// Mark steps whose speak-time is already more than a second behind
+    /// Mark steps whose speak-time is already more than `grace` behind
     /// `elapsed`, so joining a game late does not dump the whole build.
-    pub fn skip_past(&mut self, elapsed: Duration, use_lead: bool) {
-        let grace = Duration::from_secs(1);
+    pub fn skip_past(&mut self, elapsed: Duration, use_lead: bool, grace: Duration) {
         for (i, step) in self.steps.iter().enumerate() {
             let speak_at = if use_lead {
                 step.at.saturating_sub(self.lead)
@@ -702,7 +701,7 @@ mod tests {
             vec![step_at(0), step_at(35), step_at(130)],
             Duration::from_secs(2),
         );
-        late.skip_past(Duration::from_secs(40), true);
+        late.skip_past(Duration::from_secs(40), true, Duration::from_secs(1));
         assert_eq!(late.remaining(), 1);
         let rest = late.poll(Duration::from_secs(40));
         assert!(
@@ -712,7 +711,7 @@ mod tests {
         assert_eq!(late.poll(Duration::from_secs(128)).len(), 1);
 
         let mut hotkey = Scheduler::new(vec![step_at(0), step_at(35)], Duration::from_secs(2));
-        hotkey.skip_past(Duration::from_secs(10), false);
+        hotkey.skip_past(Duration::from_secs(10), false, Duration::from_secs(1));
         let next = hotkey.advance().unwrap();
         assert_eq!(next.at, Duration::from_secs(35));
         assert!(hotkey.advance().is_none());

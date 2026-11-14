@@ -6,9 +6,10 @@
 use aoe4_agent::coach::parse_clock;
 use aoe4_agent::config::{init_logging, AnnounceChannel, Config};
 use aoe4_agent::engine::{self, install_ctrlc};
-use aoe4_agent::guides::{self, GuidesClient, ListQuery};
+use aoe4_agent::guides::{self, ListQuery};
+use aoe4_agent::paths::{exe_dir, resolve_against, resolve_config_file};
 use clap::{Parser, Subcommand, ValueEnum};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -22,9 +23,15 @@ use std::sync::Arc;
 The shipped config leaves input.dry_run true. See plan.md."
 )]
 struct Cli {
-    /// Path to the YAML config.
-    #[arg(long, global = true, default_value = "config.yaml")]
-    config: PathBuf,
+    /// YAML config. A relative path is resolved next to this executable
+    /// (`AOE4_AGENT_CONFIG` overrides the flag).
+    #[arg(long, global = true, env = "AOE4_AGENT_CONFIG")]
+    config: Option<PathBuf>,
+
+    /// Override `coach.cache_dir`. A relative path is resolved next to this
+    /// executable (`AOE4_AGENT_CACHE` overrides the flag).
+    #[arg(long, global = true, env = "AOE4_AGENT_CACHE")]
+    cache: Option<PathBuf>,
 
     #[command(subcommand)]
     command: Command,
@@ -118,7 +125,7 @@ impl From<ChannelArg> for AnnounceChannel {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    let cfg = match Config::load(&cli.config) {
+    let cfg = match load_config(cli.config.as_deref(), cli.cache.as_deref()) {
         Ok(cfg) => cfg,
         Err(err) => {
             eprintln!("error: {err}");
@@ -131,6 +138,18 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
     ExitCode::SUCCESS
+}
+
+fn load_config(config: Option<&Path>, cache: Option<&Path>) -> aoe4_agent::Result<Config> {
+    let exe = exe_dir()?;
+    let requested = config.unwrap_or(Path::new("config.yaml"));
+    let config_path = resolve_config_file(&exe, requested)?;
+    let mut cfg = Config::load(&config_path)?;
+    let cache_rel = cache
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from(&cfg.coach.cache_dir));
+    cfg.coach.cache_dir = resolve_against(&exe, &cache_rel).display().to_string();
+    Ok(cfg)
 }
 
 fn dispatch(command: &Command, cfg: &Config) -> aoe4_agent::Result<()> {
@@ -178,14 +197,15 @@ fn dispatch(command: &Command, cfg: &Config) -> aoe4_agent::Result<()> {
                         "--limit must be at least 1".into(),
                     ));
                 }
-                if *limit > 10 {
-                    println!("the guides API returns at most 10 builds; showing 10");
+                let cap = cfg.coach.list_cap;
+                if *limit > cap {
+                    println!("showing at most {cap} builds (coach.list_cap)");
                 }
-                let client = GuidesClient::new(&cfg.coach.api_base);
+                let client = cfg.guides_client();
                 let builds = client.list_builds(&ListQuery {
                     civ: civ.clone(),
                     order_by: guides::normalize_order_by(order_by)?,
-                    limit: *limit,
+                    limit: (*limit).min(cap),
                 })?;
                 engine::print_build_list(&builds);
                 Ok(())
@@ -207,7 +227,7 @@ fn dispatch(command: &Command, cfg: &Config) -> aoe4_agent::Result<()> {
             }
             CoachCmd::Show { build_id } => {
                 let id = guides::normalize_build_id(build_id)?;
-                let client = GuidesClient::new(&cfg.coach.api_base);
+                let client = cfg.guides_client();
                 let build =
                     guides::fetch_build(&client, std::path::Path::new(&cfg.coach.cache_dir), &id)?;
                 engine::print_build(&build);
