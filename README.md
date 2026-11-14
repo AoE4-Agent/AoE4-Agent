@@ -92,6 +92,110 @@ A build id is either the bare id or a guides URL:
 aoe4-agent coach show --build-id https://aoe4guides.com/builds/BUILD_ID
 ```
 
+## Set up with AoE4 on Steam
+
+Age of Empires IV on Steam is app `1466860`. Steam launches `RelicCardinal.exe` from `steamapps\common\Age of Empires IV\`. Put the agent somewhere else, so a game update does not replace it and the game folder stays untouched.
+
+Create `C:\AoE4Agent` (any folder without `&` or `%` in the path) and copy in:
+
+- `aoe4-agent.exe` (the CI artifact, or `target\release\aoe4-agent.exe`)
+- `config.yaml` (start from `config.example.yaml`)
+- optionally `scripts\start-aoe4-agent.bat`, if you want the shortcut fallback below
+
+Leave `input.dry_run: true` until a dry-run skirmish looks right. The first launches should only log.
+
+### How Steam runs Launch Options
+
+Steam does not run that text box through `cmd.exe`. After it replaces `%command%` with the real game command (the quoted path to `RelicCardinal.exe` plus Steam's own arguments), it passes the whole string to `CreateProcess`. Characters such as `&` are arguments, not shell syntax, unless the program Steam starts is actually `cmd.exe`.
+
+This does **not** start the game:
+
+```text
+"C:\AoE4Agent\aoe4-agent.exe" both & %command%
+```
+
+`CreateProcess` starts `aoe4-agent.exe` and hands it `both`, `&`, and the game path as arguments. The game never launches. Steam's "Playing" state lasts only as long as that agent process.
+
+This does start both. `cmd /c` is the process Steam creates, so `cmd` is what interprets `&`:
+
+```text
+cmd /c start "AoE4 Agent" /D "C:\AoE4Agent" aoe4-agent.exe --config "C:\AoE4Agent\config.yaml" taunt & %command%
+```
+
+Paste that into Steam: Library → Age of Empires IV → Properties → General → Launch Options. Edit the two `C:\AoE4Agent` paths if you used another folder. Any flags you want the game itself to see go after `%command%`, because this line replaces the usual "append these flags to the exe" behavior.
+
+What that line does:
+
+1. `start "AoE4 Agent"` opens the agent in its own console. The first quoted string is the window title (`start` requires that). `/D` sets the working directory, and `--config` is absolute so it does not depend on Steam's current directory (the game folder).
+2. `start` returns immediately. The agent is not a child Steam will tear down when the game exits.
+3. `%command%` then runs `RelicCardinal.exe` in the same `cmd` process, and `cmd` waits for it. Steam waits on `cmd`, so playtime and the Steam overlay follow the game, not the agent.
+4. When you quit the game, that `cmd` window closes. The agent does not. Its loop has no "game exited" stop; it prints `waiting for RelicCardinal.exe` and keeps running until you close the "AoE4 Agent" window or press Ctrl+C there. Close it before the next launch, or a second agent starts beside the first.
+
+A `cmd` window stays up for the whole session, because that is the process Steam is waiting on. Minimize it. Closing it ends that process; Steam then treats the session as finished and can close the game with it. Quit from the game's own menu.
+
+`taunt` is the right command in this line. `both --build-id ...` starts the coach clock when Steam starts the game, which is still the main menu, so the build timer is already late when the match clock hits 0:00. Start `coach run` yourself when the match starts, or use `coach.mode: hotkey`.
+
+The `cmd` window flashes and the agent window is separate. That is the working shape. `start /min` in front of the agent name minimizes the agent window if you want it out of the way after the first few runs:
+
+```text
+cmd /c start /min "AoE4 Agent" /D "C:\AoE4Agent" aoe4-agent.exe --config "C:\AoE4Agent\config.yaml" taunt & %command%
+```
+
+### Fallback: shortcut or start it yourself
+
+Use this when you do not want a launch option. Clear Launch Options first so Steam does not start a second agent.
+
+`scripts\start-aoe4-agent.bat` assumes the exe and `config.yaml` sit next to the script. Copy all three into `C:\AoE4Agent`, then:
+
+- Double-click the script to open only the agent. Press Play in Steam afterwards.
+- Or run `start-aoe4-agent.bat game` (or a desktop shortcut whose target ends in `game`). The script starts the agent, then asks Steam to launch app `1466860` with `steam://rungameid/1466860`.
+
+You can also skip the script: open a terminal in `C:\AoE4Agent`, run `aoe4-agent.exe --config C:\AoE4Agent\config.yaml taunt`, then press Play in Steam with empty Launch Options.
+
+Same lifetime either way. Leaving the match does not close the agent.
+
+### In-game settings the capture assumes
+
+The crop is a fraction of the **primary** monitor, and the minimap is assumed to be the default bottom-left HUD.
+
+- Window mode: **Borderless** (AoE4's usual default), not exclusive fullscreen. Exclusive fullscreen often captures as a black image. Windowed works only if the game fills the monitor the fractions were measured on.
+- Leave the game on the primary display. A second monitor is not in the 0.1 crop math.
+- Do not move or hide the minimap. Interface / UI scale is not inferred. Pick a scale, then calibrate, and dump again if you change it.
+- Unique player colors, and set `colors.own` to your color. The shipped file assumes you are blue. Team colors need `colors.enemies` reduced to the opponent's color.
+- Run Steam and the agent as a normal user. If Steam is "Run as administrator", a normal agent cannot type into the game.
+
+### First run, still with dry_run on
+
+From `C:\AoE4Agent`:
+
+```powershell
+.\aoe4-agent.exe --config C:\AoE4Agent\config.yaml check
+```
+
+That checks the YAML and the guides API. It does not need the game. On Windows it also prints the crop in pixels and whether `RelicCardinal.exe` is running.
+
+Start a skirmish (the minimap is not on the main menu), then:
+
+```powershell
+.\aoe4-agent.exe --config C:\AoE4Agent\config.yaml taunt --dump C:\AoE4Agent\crop.ppm
+```
+
+Open `crop.ppm`. It should be the minimap and little else. If it is the corner of the desktop or a slice of the HUD, change `capture.minimap` and dump again. `taunt --geometry-width` and `--geometry-height` only print the rectangle; they do not look at the screen.
+
+With an enemy force near your town center:
+
+```powershell
+.\aoe4-agent.exe --config C:\AoE4Agent\config.yaml taunt --once
+```
+
+`--once` forces a single frame, still obeys `dry_run`, and prints whether it would send `/63`. Nothing is typed while `dry_run` is true.
+
+### Anti-cheat
+
+Launch Options are ordinary Steam configuration. AoE4's own content-editor notes tell you to put flags there. This does not turn anti-cheat off, and the agent does not attach to `RelicCardinal.exe` or read its memory.
+
+With `dry_run: true` the process only reads the screen and writes a log. Setting `dry_run: false` types into the game with `SendInput`. AoE4's anti-cheat has closed the client when it saw known cheat tools running, including in a solo skirmish. A taunt is a smaller action than those tools, and it can still be treated as automation. Ranked play with typing enabled is your decision; the shipped config leaves typing off. Do not run Cheat Engine, WeMod, or similar next to the agent. Details are in [plan.md](plan.md).
+
 ## Config
 
 | Section | What it controls |
@@ -120,7 +224,16 @@ cargo test
 cargo clippy --all-targets -- -D warnings
 ```
 
-The tests cover HSV, connected components, town-center distance, cooldowns, build-order parsing, and the scheduler. They do not launch AoE4. `platform/windows.rs` is compiled by the mingw target and by the Windows CI job.
+`platform/windows.rs` is compiled by the mingw target and by the Windows CI job. Those commands do not launch AoE4.
+
+## Testing
+
+Work in this order. Each stage adds one real-world unknown, and the earlier stages do not need a match.
+
+1. **Unit tests.** `cargo test` covers HSV masking, connected components, town-center distance, cooldowns, build-order parsing, and the scheduler. No game, and no Windows, required.
+2. **A saved crop.** `taunt --dump crop.ppm` during a skirmish writes a binary P6 PPM of the minimap rectangle. `taunt --image crop.ppm` runs the detector on that file and prints whether it would send `/63`. It does not capture or type, so it also works on Linux. `--image` treats the whole file as the minimap crop, and it accepts P6 PPM only. A PNG screenshot has to be cropped to the minimap and converted first (`magick crop.png crop.ppm`). An empty or wrong crop should print `no taunt`; a crop with an enemy-colored cluster inside the town-center disk should name `/63`.
+3. **Dry-run against the AI.** Keep `input.dry_run: true`. Start a custom skirmish, not a ranked match, with `aoe4-agent.exe taunt` already running (or via the Steam launch option). Walk an enemy force up to your town center and confirm the log shows the taunt, and that chat in the game stays empty. Quitting the match does not exit the agent; stop it with Ctrl+C.
+4. **Live.** Only after step 3 looks right, set `input.dry_run: false` and repeat the same skirmish. Confirm the game actually receives `/63`, then decide whether that is worth the anti-cheat note above. Put `dry_run` back to true when you are done experimenting.
 
 ## License
 

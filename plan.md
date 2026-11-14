@@ -102,7 +102,7 @@ That host returns:
 
 The client prefers the overlay document and falls back to native. Both become `BuildStep { at, age, villagers, resources, notes }`. HTML `<img title="…">` and `<br>` and the `@token@` dialect are reduced to speech by `clean_note`. Empty `ageUp` groups are skipped. A negative or blank count means "not set" and is left out of the sentence.
 
-Fair use, from the site's own about page: the API is free, unauthenticated, and asks callers to cache, stay inside the rate limit, and not walk the whole library. The agent sends `User-Agent: aoe4-agent/0.1.0`, caches the raw JSON at `cache/<id>.json`, and reads that file if the next request fails. List calls are not crawled.
+Fair use, from the site's own about page: the API is free, unauthenticated, and asks callers to cache, stay inside the rate limit, and not walk the whole library. The agent sends `User-Agent: aoe4-agent/0.1.1`, caches the raw JSON at `cache/<id>.json`, and reads that file if the next request fails. List calls are not crawled.
 
 Timing:
 
