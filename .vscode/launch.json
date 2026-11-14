@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "1. Debug: Taunt Engine Only",
+      "cargo": {
+        "args": ["build", "--bin=aoe4-agent", "--package=aoe4-agent"],
+        "filter": {
+          "name": "aoe4-agent",
+          "kind": "bin"
+        }
+      },
+      "args": ["--config", "config.yaml", "taunt"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "2. Debug: Coach List Builds (ENG)",
+      "cargo": {
+        "args": ["build", "--bin=aoe4-agent", "--package=aoe4-agent"],
+        "filter": {
+          "name": "aoe4-agent",
+          "kind": "bin"
+        }
+      },
+      "args": ["--config", "config.yaml", "coach", "list", "--civ", "ENG", "--limit", "10"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "3. Debug: Both (Taunt + Coach)",
+      "cargo": {
+        "args": ["build", "--bin=aoe4-agent", "--package=aoe4-agent"],
+        "filter": {
+          "name": "aoe4-agent",
+          "kind": "bin"
+        }
+      },
+      "args": ["--config", "config.yaml", "both", "--build-id", "REPLACE_WITH_BUILD_ID"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

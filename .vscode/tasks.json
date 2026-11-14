@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "cargo",
+      "command": "build",
+      "label": "cargo: build (debug)",
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      "type": "cargo",
+      "command": "build",
+      "args": ["--release"],
+      "label": "cargo: build (release)",
+      "problemMatcher": ["$rustc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "type": "cargo",
+      "command": "clippy",
+      "label": "cargo: clippy lint",
+      "problemMatcher": ["$rustc"]
+    }
+  ]
+}
