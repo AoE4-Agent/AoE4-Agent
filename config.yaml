@@ -1,0 +1,98 @@
+# AoE4 Agent configuration.
+# Copy to config.yaml (a matching copy is already committed) and edit.
+# Fractions are 0.0-1.0. Hue is degrees 0-360 and may wrap (h_min > h_max).
+# Saturation and value are 0.0-1.0.
+
+process:
+  # AoE4's game process. Match is case-insensitive and includes the .exe.
+  name: RelicCardinal.exe
+  # Do not type while the game is in the background or a menu has focus.
+  require_foreground: true
+
+capture:
+  poll_ms: 200
+  # Fractions of the primary monitor, origin top-left.
+  # The default HUD puts the minimap at the bottom-left. These numbers are
+  # a starting guess for 16:9 borderless, not a measurement of your screen.
+  # `aoe4-agent taunt --dump crop.ppm` writes the crop so you can nudge them.
+  # The same fractions track 1080p / 1440p / 4K. The in-game UI scale slider
+  # does not: change that, or move the HUD, and dump again.
+  minimap:
+    x: 0.006
+    y: 0.745
+    width: 0.172
+    height: 0.242
+  # Disk watched for enemy clusters, as fractions of the minimap crop.
+  # Radius is a fraction of the crop's shorter side. Your town center is not
+  # in a fixed place on the minimap; this default assumes it sits toward the
+  # lower-left of the crop, which is only true for some spawns.
+  town_center:
+    cx: 0.28
+    cy: 0.78
+    radius: 0.38
+
+colors:
+  # Unique-colors palette, with blue reserved as "own" below.
+  # If you are not blue, change `own` or your villagers will not be excluded
+  # and a blue enemy will be invisible. Team colors: delete every enemy entry
+  # except the opponent's color.
+  enemies:
+    - { name: red,    h_min: 345, h_max: 15,  s_min: 0.40, s_max: 1.0, v_min: 0.30, v_max: 1.0 }
+    - { name: orange, h_min: 16,  h_max: 40,  s_min: 0.45, s_max: 1.0, v_min: 0.35, v_max: 1.0 }
+    - { name: yellow, h_min: 41,  h_max: 70,  s_min: 0.40, s_max: 1.0, v_min: 0.40, v_max: 1.0 }
+    - { name: green,  h_min: 80,  h_max: 160, s_min: 0.35, s_max: 1.0, v_min: 0.25, v_max: 1.0 }
+    - { name: cyan,   h_min: 170, h_max: 195, s_min: 0.35, s_max: 1.0, v_min: 0.30, v_max: 1.0 }
+    - { name: purple, h_min: 260, h_max: 310, s_min: 0.30, s_max: 1.0, v_min: 0.25, v_max: 1.0 }
+  own:
+    name: blue
+    h_min: 205
+    h_max: 255
+    s_min: 0.35
+    s_max: 1.0
+    v_min: 0.25
+    v_max: 1.0
+
+detection:
+  connectivity: 8
+  min_cluster_pixels: 8
+  near_town_center_only: true
+  # Require this many consecutive hits so a one-frame speck cannot taunt.
+  consecutive_frames: 3
+
+taunts:
+  - id: under_attack
+    command: "/63"
+    label: "I'm under attack!"
+    cooldown_secs: 45
+    min_clusters: 1
+  # A second rule fires only when the first is on cooldown and two clusters match.
+  # - id: being_rushed
+  #   command: "/12"
+  #   label: "Ah! Being rushed."
+  #   cooldown_secs: 60
+  #   min_clusters: 2
+
+input:
+  # true logs the taunt instead of typing it. Set false only after reading
+  # the anti-cheat section of plan.md. TTS is unaffected.
+  dry_run: true
+  # all: Enter, type, Enter. team: hold Shift around Enter. The Shift binding
+  # is a guess; see plan.md.
+  chat: all
+  key_delay_ms: 40
+  chat_open_delay_ms: 80
+
+coach:
+  # aoe4guides.com only proxies single-build GETs. List and status live here.
+  api_base: "https://aoe4-guides-api-7h2vti5ckq-ey.a.run.app"
+  cache_dir: cache
+  # tts, chat, or both. tts does not inject keys. chat is clipped to one line.
+  channel: tts
+  # timer follows step timestamps from the moment you start the command.
+  # hotkey waits for Enter in this console (or step_hotkey) so you stay in sync.
+  mode: timer
+  lead_secs: 2
+  step_hotkey: F13
+
+log:
+  level: info

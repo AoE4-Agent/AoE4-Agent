@@ -1,0 +1,4 @@
+# Used by `cargo build --target x86_64-pc-windows-gnu` on a Linux host.
+# The MSVC build (Windows, GitHub Actions) does not read this target block.
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
