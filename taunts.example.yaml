@@ -1,5 +1,5 @@
 # Draft taunt list. The agent does not load this file yet.
-# Codes and quoted lines are from docs/TAUNTS.md (pull request #6).
+# Codes and quoted lines are from docs/TAUNTS.md.
 # condition types other than minimap_enemy_near_tc are proposed.
 # chat: inherit uses input.chat, input.chat_key (enter), and
 # input.team_modifier (shift) from config.yaml beside the executable.

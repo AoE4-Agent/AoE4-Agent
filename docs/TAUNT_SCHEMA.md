@@ -2,7 +2,7 @@
 
 This is a proposal for one YAML entry per taunt the agent may send. It is not loaded by the program. `config.yaml` still uses the short `taunts:` list (`id`, `command`, `label`, `cooldown_secs`, `min_clusters`).
 
-The numbered lines themselves are catalogued in `docs/TAUNTS.md` (pull request #6; not on `main` yet). Codes in `taunts.example.yaml` are taken from that catalog. `/63` is "I'm under attack!" and `/12` is "Ah! Being rushed."
+The numbered lines themselves are catalogued in `docs/TAUNTS.md`. Codes in `taunts.example.yaml` are taken from that catalog. `/63` is "I'm under attack!" and `/12` is "Ah! Being rushed."
 
 ## What the code does today
 
