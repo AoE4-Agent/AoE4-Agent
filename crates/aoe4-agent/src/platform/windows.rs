@@ -31,7 +31,7 @@ use windows_sys::Win32::UI::HiDpi::{
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
-    KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_RETURN, VK_SHIFT,
+    KEYEVENTF_UNICODE, VIRTUAL_KEY,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, GetSystemMetrics, GetWindowThreadProcessId, SetProcessDPIAware,
@@ -94,7 +94,8 @@ impl Platform for WindowsPlatform {
     fn send_chat(
         &self,
         text: &str,
-        team: bool,
+        modifier: Option<u16>,
+        chat_key: u16,
         key_delay: Duration,
         open_delay: Duration,
     ) -> Result<()> {
@@ -103,9 +104,11 @@ impl Platform for WindowsPlatform {
                 "refusing to send an empty chat line".into(),
             ));
         }
-        // AoE4 opens chat with Enter. Shift is held for the team-chat guess
-        // documented in plan.md; it is not verified against every patch.
-        tap(VK_SHIFT, VK_RETURN, team)?;
+        // The chord comes from config (`chat_key`, and `team_modifier` when
+        // chat is `team`). The shipped values are Enter, and Shift+Enter.
+        let modified = modifier.is_some();
+        let modifier = modifier.unwrap_or(0);
+        tap(modifier, chat_key, modified)?;
         std::thread::sleep(open_delay);
         for ch in text.chars() {
             if ch.is_control() {
@@ -116,7 +119,7 @@ impl Platform for WindowsPlatform {
                 std::thread::sleep(key_delay);
             }
         }
-        tap(VK_SHIFT, VK_RETURN, team)?;
+        tap(modifier, chat_key, modified)?;
         Ok(())
     }
 
@@ -330,7 +333,6 @@ fn speak_sapi(text: &str) -> Result<()> {
     let spoken: String = text
         .chars()
         .map(|c| if c.is_control() { ' ' } else { c })
-        .take(400)
         .collect();
     let spoken = spoken.replace("'@", "' @");
     let script = format!(

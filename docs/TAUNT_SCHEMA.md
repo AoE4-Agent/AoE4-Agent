@@ -15,7 +15,7 @@ The brain then:
 3. Walks the list from the top and sends the first rule that is over its cluster minimum and off cooldown. Cooldown is stored by `id`.
 4. Sends at most one taunt per frame, then clears the streak.
 
-Chat destination (`all` or `team`) is `input.chat` for every taunt. The agent does not know the match clock, whether a match has started, or whether the player is idle. The coach hotkey (F13 or Enter on stdin) advances build-order steps. It does not fire taunts.
+Chat destination (`all` or `team`) is `input.chat` for every taunt. The key that opens chat is `input.chat_key` (default `enter`). Team chat holds `input.team_modifier` (default `shift`) around that key. Both have been config since 0.2.0; the Shift chord is still unverified in a live client. The watched process name is `process.name` (default `RelicCardinal.exe`). `config.yaml` and `coach.cache_dir` are read from the directory that contains the executable, so a Steam launch can keep them in `.\AoE4Agent` under the game install. The agent does not know the match clock, whether a match has started, or whether the player is idle. The coach hotkey (`coach.step_hotkey`, default F13, or Enter on stdin) advances build-order steps. It does not fire taunts.
 
 ## Document shape
 
@@ -43,7 +43,7 @@ taunts:
 | `text` | string | optional | | Published spoken line, for the log and for optional speech. The game speaks its own line when the command is sent. |
 | `description` | string | optional | | Why the rule exists. Not shown in game. |
 | `enabled` | bool | optional | `true` | Skip the rule when false. |
-| `chat` | `all`, `team`, or `inherit` | optional | `inherit` | `inherit` uses `input.chat`. `team` is the Shift+Enter guess and is not verified in a live client. |
+| `chat` | `all`, `team`, or `inherit` | optional | `inherit` | `inherit` uses `input.chat`. `team` holds `input.team_modifier` around `input.chat_key`. Those keys default to `shift` and `enter`. |
 | `condition` | object | required | | When the rule is eligible. See below. |
 | `cooldown_secs` | number | required | | Seconds before this `id` may fire again. Minimum 1, matching today's check. This is the "cooldown" field. |
 | `max_per_game` | integer | optional | no limit | Cap on sends after a match start. Proposed: the agent does not yet know match boundaries. This is the "max" field. |
@@ -59,7 +59,7 @@ taunts:
 
 ### `minimap_enemy_near_tc` (implemented)
 
-The only condition the 0.1 loop can evaluate.
+The only condition the 0.2.0 loop can evaluate.
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
@@ -115,12 +115,12 @@ List order is the priority. `under_attack` is first, so a frame with two cluster
 
 ## Design notes
 
-- One file, `taunts.yaml`, next to `config.yaml`, so the capture setup and the line list can change separately. A later loader would read it only when present and otherwise keep today's `taunts:` block.
+- One file, `taunts.yaml`, next to `config.yaml` in the executable's directory (the same place 0.2.0 resolves `config.yaml` and a relative `coach.cache_dir`). A later loader would read it only when present and otherwise keep today's `taunts:` block. A relative `--config` still falls back to the current directory when the file beside the exe is missing; a future taunt file should follow that same rule.
 - The chat command stays `/` plus the code. `text` is for humans and for TTS. Putting the sentence in `command` would type the words instead of the taunt.
 - `chance` defaults to 1 so a file does not randomly drop the under-attack call. A value below 1 needs a seeded draw if tests are going to pin it.
 - `max_per_game` and `min_game_time_secs` are written down now so the file format does not have to break when match detection exists. Until then a loader should ignore them or refuse the file, and the draft does not pick which.
 - `priority` is an integer so two authors can insert a rule without reordering the whole list. File order remains the tie break.
-- Team chat is per rule because "retreat" is for allies and "GG" is for everyone. The Shift chord is still the unverified one described in `plan.md`.
+- Team chat is per rule because "retreat" is for allies and "GG" is for everyone. The keys come from `input.chat_key` and `input.team_modifier` in `config.yaml` (defaults `enter` and `shift`). That chord is still the unverified one described in `plan.md`.
 
 ## Open questions
 

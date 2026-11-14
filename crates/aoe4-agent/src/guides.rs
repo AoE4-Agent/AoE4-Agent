@@ -12,7 +12,11 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const DEFAULT_API_BASE: &str = "https://aoe4-guides-api-7h2vti5ckq-ey.a.run.app";
-pub const USER_AGENT: &str = "aoe4-agent/0.1.1 (+https://github.com/AoE4-Agent/AoE4-Agent)";
+pub const USER_AGENT: &str = concat!(
+    "aoe4-agent/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://github.com/AoE4-Agent/AoE4-Agent)"
+);
 
 #[derive(Debug, Clone)]
 pub struct ListQuery {
@@ -27,11 +31,11 @@ pub struct GuidesClient {
 }
 
 impl GuidesClient {
-    pub fn new(base: impl Into<String>) -> Self {
+    pub fn with_timeouts(base: impl Into<String>, connect: Duration, read: Duration) -> Self {
         let base = base.into().trim_end_matches('/').to_string();
         let agent = ureq::AgentBuilder::new()
-            .timeout_connect(Duration::from_secs(10))
-            .timeout_read(Duration::from_secs(25))
+            .timeout_connect(connect)
+            .timeout_read(read)
             .user_agent(USER_AGENT)
             .build();
         Self { base, agent }
@@ -61,7 +65,7 @@ impl GuidesClient {
         }
         let body = self.get(&url)?;
         let mut builds = parse_build_list(&body)?;
-        let limit = query.limit.clamp(1, 10);
+        let limit = query.limit.max(1);
         if builds.len() > limit {
             builds.truncate(limit);
         }
