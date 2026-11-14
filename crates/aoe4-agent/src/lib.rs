@@ -12,6 +12,7 @@ pub mod engine;
 pub mod error;
 pub mod frame;
 pub mod guides;
+pub mod paths;
 pub mod platform;
 pub mod ppm;
 pub mod taunt;

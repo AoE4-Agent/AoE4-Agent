@@ -52,7 +52,7 @@ That produces `target/x86_64-pc-windows-gnu/release/aoe4-agent.exe`. `.cargo/con
 
 ## Run
 
-`config.yaml` matches `config.example.yaml`. Edit the copy you actually launch.
+`config.yaml` matches `config.example.yaml`. The running exe loads `config.yaml` from its own folder unless you pass `--config` or set `AOE4_AGENT_CONFIG`. `AOE4_AGENT_CACHE` overrides `coach.cache_dir`.
 
 ```powershell
 # Linux or Windows. Confirms the config and the guides API.
@@ -94,13 +94,17 @@ aoe4-agent coach show --build-id https://aoe4guides.com/builds/BUILD_ID
 
 ## Set up with AoE4 on Steam
 
-Age of Empires IV on Steam is app `1466860`. Steam launches `RelicCardinal.exe` from `steamapps\common\Age of Empires IV\`. Put the agent somewhere else, so a game update does not replace it and the game folder stays untouched.
+Age of Empires IV on Steam is app `1466860`. Steam launches `RelicCardinal.exe` from `steamapps\common\Age of Empires IV\`. When it starts that game, the working directory is that install folder, not Steam's own program folder.
 
-Create `C:\AoE4Agent` (any folder without `&` or `%` in the path) and copy in:
+Create `.\AoE4Agent` inside the install folder and copy in:
 
 - `aoe4-agent.exe` (the CI artifact, or `target\release\aoe4-agent.exe`)
 - `config.yaml` (start from `config.example.yaml`)
 - optionally `scripts\start-aoe4-agent.bat`, if you want the shortcut fallback below
+
+The folder name must not contain `&` or `%`. `.\AoE4Agent` in a Steam launch option is `steamapps\common\Age of Empires IV\AoE4Agent`, because that is `cmd`'s current directory. It is not `Steam\AoE4Agent`.
+
+`config.yaml` and `coach.cache_dir` are resolved from the directory that contains `aoe4-agent.exe`, not from the working directory. A relative `cache` becomes `.\AoE4Agent\cache`. A path with a drive letter (`D:\aoe4-cache`) stays where it says. If the file next to the exe is missing, a relative `--config` is tried once against the current directory, which is how `cargo run` from this repo still finds `config.yaml`. Steam does not need that fallback: put `config.yaml` next to the exe and leave `--config` off the launch line.
 
 Leave `input.dry_run: true` until a dry-run skirmish looks right. The first launches should only log.
 
@@ -111,22 +115,22 @@ Steam does not run that text box through `cmd.exe`. After it replaces `%command%
 This does **not** start the game:
 
 ```text
-"C:\AoE4Agent\aoe4-agent.exe" both & %command%
+".\AoE4Agent\aoe4-agent.exe" both & %command%
 ```
 
-`CreateProcess` starts `aoe4-agent.exe` and hands it `both`, `&`, and the game path as arguments. The game never launches. Steam's "Playing" state lasts only as long as that agent process.
+`CreateProcess` starts `aoe4-agent.exe` and hands it `both`, `&`, and the game path as arguments. The game never launches. Steam's "Playing" state lasts only as long as that agent process. `start` is also not a `CreateProcess` feature; it is a `cmd` builtin, so it does nothing in that line either.
 
-This does start both. `cmd /c` is the process Steam creates, so `cmd` is what interprets `&`:
+This does start both. `cmd /c` is the process Steam creates, so `cmd` is what interprets `&` and `start`, and both `.\AoE4Agent` paths are relative to the game install folder:
 
 ```text
-cmd /c start "AoE4 Agent" /D "C:\AoE4Agent" aoe4-agent.exe --config "C:\AoE4Agent\config.yaml" taunt & %command%
+cmd /c start "AoE4 Agent" /D ".\AoE4Agent" ".\AoE4Agent\aoe4-agent.exe" taunt & %command%
 ```
 
-Paste that into Steam: Library → Age of Empires IV → Properties → General → Launch Options. Edit the two `C:\AoE4Agent` paths if you used another folder. Any flags you want the game itself to see go after `%command%`, because this line replaces the usual "append these flags to the exe" behavior.
+Paste that into Steam: Library → Age of Empires IV → Properties → General → Launch Options. Any flags you want the game itself to see go after `%command%`, because this line replaces the usual "append these flags to the exe" behavior.
 
 What that line does:
 
-1. `start "AoE4 Agent"` opens the agent in its own console. The first quoted string is the window title (`start` requires that). `/D` sets the working directory, and `--config` is absolute so it does not depend on Steam's current directory (the game folder).
+1. `start "AoE4 Agent"` opens the agent in its own console. The first quoted string is the window title (`start` requires that). `/D ".\AoE4Agent"` is the agent's working directory, still relative to the game install folder. The program path is `.\AoE4Agent\aoe4-agent.exe` because `start` looks up the program from `cmd`'s directory, not from `/D`. There is no `--config` argument: `config.yaml` is read from beside the exe.
 2. `start` returns immediately. The agent is not a child Steam will tear down when the game exits.
 3. `%command%` then runs `RelicCardinal.exe` in the same `cmd` process, and `cmd` waits for it. Steam waits on `cmd`, so playtime and the Steam overlay follow the game, not the agent.
 4. When you quit the game, that `cmd` window closes. The agent does not. Its loop has no "game exited" stop; it prints `waiting for RelicCardinal.exe` and keeps running until you close the "AoE4 Agent" window or press Ctrl+C there. Close it before the next launch, or a second agent starts beside the first.
@@ -138,19 +142,25 @@ A `cmd` window stays up for the whole session, because that is the process Steam
 The `cmd` window flashes and the agent window is separate. That is the working shape. `start /min` in front of the agent name minimizes the agent window if you want it out of the way after the first few runs:
 
 ```text
-cmd /c start /min "AoE4 Agent" /D "C:\AoE4Agent" aoe4-agent.exe --config "C:\AoE4Agent\config.yaml" taunt & %command%
+cmd /c start /min "AoE4 Agent" /D ".\AoE4Agent" ".\AoE4Agent\aoe4-agent.exe" taunt & %command%
 ```
 
 ### Fallback: shortcut or start it yourself
 
 Use this when you do not want a launch option. Clear Launch Options first so Steam does not start a second agent.
 
-`scripts\start-aoe4-agent.bat` assumes the exe and `config.yaml` sit next to the script. Copy all three into `C:\AoE4Agent`, then:
+`scripts\start-aoe4-agent.bat` belongs in `.\AoE4Agent` next to the exe and `config.yaml`. It does not refer to `.\AoE4Agent` itself. A relative path inside the script would be resolved against the caller's current directory: a double-click is often that folder, but a shortcut can be `System32` or anything in "Start in". Once the script has `cd`'d to its own folder, `.\AoE4Agent` would mean a nested `AoE4Agent\AoE4Agent` and would not find the exe. The script uses `%~dp0`, which is the folder containing the `.bat`, independent of Steam and of the caller's working directory.
 
 - Double-click the script to open only the agent. Press Play in Steam afterwards.
-- Or run `start-aoe4-agent.bat game` (or a desktop shortcut whose target ends in `game`). The script starts the agent, then asks Steam to launch app `1466860` with `steam://rungameid/1466860`.
+- Or run `start-aoe4-agent.bat game` (or a desktop shortcut whose target ends in `game`). The script starts the agent, then asks Steam to launch app `1466860` with `steam://rungameid/1466860`. If the Steam launch option above is also set, that Play starts a second agent. Use one or the other.
 
-You can also skip the script: open a terminal in `C:\AoE4Agent`, run `aoe4-agent.exe --config C:\AoE4Agent\config.yaml taunt`, then press Play in Steam with empty Launch Options.
+You can also skip the script. From the game install folder, with Launch Options empty:
+
+```powershell
+.\AoE4Agent\aoe4-agent.exe taunt
+```
+
+That `.\AoE4Agent` is relative to the terminal's current directory. If the terminal is already inside `.\AoE4Agent`, the command is `.\aoe4-agent.exe taunt` and there is no extra `AoE4Agent` segment.
 
 Same lifetime either way. Leaving the match does not close the agent.
 
@@ -166,26 +176,26 @@ The crop is a fraction of the **primary** monitor, and the minimap is assumed to
 
 ### First run, still with dry_run on
 
-From `C:\AoE4Agent`:
+From the game install folder:
 
 ```powershell
-.\aoe4-agent.exe --config C:\AoE4Agent\config.yaml check
+.\AoE4Agent\aoe4-agent.exe check
 ```
 
-That checks the YAML and the guides API. It does not need the game. On Windows it also prints the crop in pixels and whether `RelicCardinal.exe` is running.
+That checks the YAML beside the exe and the guides API. It does not need the game. On Windows it also prints the crop in pixels and whether `RelicCardinal.exe` is running.
 
-Start a skirmish (the minimap is not on the main menu), then:
+Start a skirmish (the minimap is not on the main menu), then, still from the game install folder:
 
 ```powershell
-.\aoe4-agent.exe --config C:\AoE4Agent\config.yaml taunt --dump C:\AoE4Agent\crop.ppm
+.\AoE4Agent\aoe4-agent.exe taunt --dump .\AoE4Agent\crop.ppm
 ```
 
-Open `crop.ppm`. It should be the minimap and little else. If it is the corner of the desktop or a slice of the HUD, change `capture.minimap` and dump again. `taunt --geometry-width` and `--geometry-height` only print the rectangle; they do not look at the screen.
+`--dump` and `--image` are paths for this one command, so they stay relative to the terminal's current directory. `.\AoE4Agent\crop.ppm` from the game folder is the agent folder. Open that PPM. It should be the minimap and little else. If it is the corner of the desktop or a slice of the HUD, change `capture.minimap` and dump again. `taunt --geometry-width` and `--geometry-height` only print the rectangle; they do not look at the screen.
 
 With an enemy force near your town center:
 
 ```powershell
-.\aoe4-agent.exe --config C:\AoE4Agent\config.yaml taunt --once
+.\AoE4Agent\aoe4-agent.exe taunt --once
 ```
 
 `--once` forces a single frame, still obeys `dry_run`, and prints whether it would send `/63`. Nothing is typed while `dry_run` is true.
@@ -200,14 +210,14 @@ With `dry_run: true` the process only reads the screen and writes a log. Setting
 
 | Section | What it controls |
 | --- | --- |
-| `process` | `RelicCardinal.exe`, and whether the game must be the foreground window |
+| `process` | Game executable (default `RelicCardinal.exe`), foreground check, wait-log interval |
 | `capture.minimap` | Crop as fractions of the primary monitor, origin top-left |
 | `capture.town_center` | Disk inside that crop. Radius is a fraction of the shorter side |
 | `colors` | Enemy HSV ranges, and your own color (excluded before clustering) |
 | `detection` | 4- or 8-connectivity, minimum blob size, consecutive frames |
 | `taunts` | Command, label, cooldown, cluster count |
-| `input` | `dry_run`, all-chat vs team-chat, key delays |
-| `coach` | API host, cache directory, `tts` / `chat` / `both`, `timer` / `hotkey` |
+| `input` | `dry_run`, all-chat vs team-chat, `chat_key` / `team_modifier`, key delays |
+| `coach` | API host and timeouts, cache directory, list cap, `tts` / `chat` / `both`, `timer` / `hotkey`, speech and chat length |
 
 `colors.own` defaults to blue. If you are not blue, change it, or your villagers look like an attack and a blue enemy is invisible. Team colors: keep only the opponent's range in `colors.enemies`.
 
